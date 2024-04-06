@@ -7,8 +7,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/IvanMeln1k/go-bank-app/pkg/redisdb"
-	"github.com/IvanMeln1k/go-bank-app/pkg/tokens"
+	"github.com/IvanMeln1k/go-bank-app/bank/pkg/redisdb"
+	"github.com/IvanMeln1k/go-bank-app/bank/pkg/tokens"
 	"github.com/IvanMeln1k/go-bank-app/worker/internal/service"
 	"github.com/IvanMeln1k/go-bank-app/worker/internal/workers"
 	"github.com/IvanMeln1k/go-bank-app/worker/pkg/email"
