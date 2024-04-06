@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type PostgresConfig struct {
+type Config struct {
 	User     string
 	Password string
 	Host     string
@@ -16,7 +16,7 @@ type PostgresConfig struct {
 	SSLMode  string
 }
 
-func NewPostgresDB(cfg PostgresConfig) (*sqlx.DB, error) {
+func NewPostgresDB(cfg Config) (*sqlx.DB, error) {
 	strConn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", cfg.Host,
 		cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode)
 	db, err := sqlx.Connect("postgres", strConn)

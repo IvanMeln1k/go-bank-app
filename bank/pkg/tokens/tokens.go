@@ -17,15 +17,29 @@ var (
 type TokenManagerInterface interface {
 	CreateRefreshToken() (string, error)
 	CreateAccessToken(userId int) (string, error)
-	CreateEmailToken(email int) (string, error)
+	CreateEmailToken(email string) (string, error)
 	ParseAccessToken(tokenString string) (int, error)
 	ParseEmailToken(tokenString string) (string, error)
 }
 
 type TokenManager struct {
+	secretKey string
+	accessTTL time.Duration
+	emailTTL  time.Duration
+}
+
+type Config struct {
 	SecretKey string
 	AccessTTL time.Duration
 	EmailTTL  time.Duration
+}
+
+func NewTokenManager(cfg Config) *TokenManager {
+	return &TokenManager{
+		secretKey: cfg.SecretKey,
+		accessTTL: cfg.AccessTTL,
+		emailTTL:  cfg.EmailTTL,
+	}
 }
 
 func (tm *TokenManager) CreateRefreshToken() (string, error) {
@@ -60,19 +74,19 @@ func (tm *TokenManager) createStandartClaims(ttl time.Duration) jwt.StandardClai
 
 func (tm *TokenManager) createJWTToken(claims jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(tm.SecretKey))
+	return token.SignedString([]byte(tm.secretKey))
 }
 
 func (tm *TokenManager) CreateAccessToken(userId int) (string, error) {
 	return tm.createJWTToken(ClaimsAccessToken{
-		tm.createStandartClaims(tm.AccessTTL),
+		tm.createStandartClaims(tm.accessTTL),
 		userId,
 	})
 }
 
 func (tm *TokenManager) CreateEmailToken(email string) (string, error) {
 	return tm.createJWTToken(ClaimsEmailToken{
-		tm.createStandartClaims(tm.EmailTTL),
+		tm.createStandartClaims(tm.emailTTL),
 		email,
 	})
 }
@@ -89,7 +103,7 @@ func (tm *TokenManager) ParseAccessToken(tokenString string) (int, error) {
 		if claims.ExpiresAt <= time.Now().Unix() {
 			return nil, ErrTokenExpired
 		}
-		return []byte(tm.SecretKey), nil
+		return []byte(tm.secretKey), nil
 	})
 
 	if err != nil {
@@ -116,7 +130,7 @@ func (tm *TokenManager) ParseEmailToken(tokenString string) (string, error) {
 		if claims.ExpiresAt <= time.Now().Unix() {
 			return nil, ErrTokenExpired
 		}
-		return []byte(tm.SecretKey), nil
+		return []byte(tm.secretKey), nil
 	})
 
 	if err != nil {

@@ -21,7 +21,7 @@ func NewHasher(salt string) *Hasher {
 }
 
 func (h *Hasher) Hash(password string) string {
-	bytes := sha256.Sum256([]byte(password))
+	bytes := sha256.Sum256([]byte(password + h.salt))
 	return fmt.Sprintf("%x", bytes)
 }
 
