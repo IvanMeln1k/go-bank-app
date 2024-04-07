@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/IvanMeln1k/go-bank-app/bank/pkg/tokens"
-	"github.com/IvanMeln1k/go-bank-app/worker/pkg/email"
+	"github.com/IvanMeln1k/go-bank-app-bank/pkg/tokens"
+	"github.com/IvanMeln1k/go-bank-app-worker/pkg/email"
 	"github.com/sirupsen/logrus"
 )
 

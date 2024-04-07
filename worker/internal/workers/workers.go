@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/IvanMeln1k/go-bank-app/worker/internal/domain"
-	"github.com/IvanMeln1k/go-bank-app/worker/internal/service"
+	"github.com/IvanMeln1k/go-bank-app-worker/internal/domain"
+	"github.com/IvanMeln1k/go-bank-app-worker/internal/service"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
