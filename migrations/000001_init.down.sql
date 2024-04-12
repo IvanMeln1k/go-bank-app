@@ -1,6 +1,6 @@
-DROP TABLE machines;
+DROP TABLE machines_stats;
 
-DROP TABLE places;
+DROP TABLE machines;
 
 DROP TABLE accounts;
 

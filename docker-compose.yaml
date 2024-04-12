@@ -1,15 +1,19 @@
 version: '3'
 
 services:
-  worker:
-    build: ./worker
+  bank:
+    build: ./bank
     ports:
       - 8000:8000
     depends_on:
       - redisdb
-      - postgresdb
-    env_file:
-      - .env
+      - migrate
+
+  worker:
+    build: ./worker
+    depends_on:
+      - redisdb
+      - migrate
   
   postgresdb:
     restart: always
@@ -32,4 +36,13 @@ services:
     env_file:
       - .env
     command: /bin/sh -c "redis-server --requirepass $$REDIS_PASSWORD"
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    command: ["-path", "/migrations", "-database",  "postgres://postgres:postgres@postgresdb:5432/postgres?sslmode=disable", "up"]
+    depends_on:
+      postgresdb:
+        condition: service_healthy
   

@@ -2,11 +2,11 @@ package tokens
 
 import (
 	"errors"
-	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -15,10 +15,9 @@ var (
 )
 
 type TokenManagerInterface interface {
-	CreateRefreshToken() (string, error)
-	CreateAccessToken(userId int) (string, error)
+	CreateAccessToken(userId uuid.UUID) (string, error)
 	CreateEmailToken(email string) (string, error)
-	ParseAccessToken(tokenString string) (int, error)
+	ParseAccessToken(tokenString string) (uuid.UUID, error)
 	ParseEmailToken(tokenString string) (string, error)
 }
 
@@ -42,27 +41,20 @@ func NewTokenManager(cfg Config) *TokenManager {
 	}
 }
 
-func (tm *TokenManager) CreateRefreshToken() (string, error) {
-	b := make([]byte, 32)
-
-	src := rand.NewSource(time.Now().Unix())
-	r := rand.New(src)
-
-	if _, err := r.Read(b); err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", b), nil
-}
-
 type ClaimsAccessToken struct {
 	jwt.StandardClaims
-	Id int `json:"id"`
+	Id uuid.UUID `json:"id"`
 }
 
 type ClaimsEmailToken struct {
 	jwt.StandardClaims
 	Email string `json:"email"`
+}
+
+type ClaimsMachineToken struct {
+	jwt.StandardClaims
+	Id        uuid.UUID `json:"id"`
+	IsMachine struct{}  `json:"isMachine"`
 }
 
 func (tm *TokenManager) createStandartClaims(ttl time.Duration) jwt.StandardClaims {
@@ -77,23 +69,32 @@ func (tm *TokenManager) createJWTToken(claims jwt.Claims) (string, error) {
 	return token.SignedString([]byte(tm.secretKey))
 }
 
-func (tm *TokenManager) CreateAccessToken(userId int) (string, error) {
-	return tm.createJWTToken(ClaimsAccessToken{
+func (tm *TokenManager) CreateAccessToken(userId uuid.UUID) (string, error) {
+	return tm.createJWTToken(&ClaimsAccessToken{
 		tm.createStandartClaims(tm.accessTTL),
 		userId,
 	})
 }
 
+// func (tm *TokenManager) CreateMachineToken(machineId uuid.UUID) (string, error) {
+// 	return tm.createJWTToken(ClaimsMachineToken{
+// 		tm.createStandartClaims(time.Hour * 24 * 365 * 100),
+// 		machineId,
+// 		struct{}{},
+// 	})
+// }
+
 func (tm *TokenManager) CreateEmailToken(email string) (string, error) {
-	return tm.createJWTToken(ClaimsEmailToken{
+	return tm.createJWTToken(&ClaimsEmailToken{
 		tm.createStandartClaims(tm.emailTTL),
 		email,
 	})
 }
 
-func (tm *TokenManager) ParseAccessToken(tokenString string) (int, error) {
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+func (tm *TokenManager) ParseAccessToken(tokenString string) (uuid.UUID, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &ClaimsAccessToken{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			logrus.Println("error invalid")
 			return nil, ErrTokenInvalid
 		}
 		claims, ok := t.Claims.(*ClaimsAccessToken)
@@ -107,19 +108,23 @@ func (tm *TokenManager) ParseAccessToken(tokenString string) (int, error) {
 	})
 
 	if err != nil {
-		return 0, err
+		logrus.Errorf("[tokens]: error parsing access token: %s", err)
+		if errors.Is(ErrTokenExpired, err) {
+			return uuid.UUID{}, ErrTokenExpired
+		}
+		return uuid.UUID{}, ErrTokenInvalid
 	}
 
 	claims, ok := token.Claims.(*ClaimsAccessToken)
 	if !ok {
-		return 0, ErrTokenInvalid
+		return uuid.UUID{}, ErrTokenInvalid
 	}
 
 	return claims.Id, nil
 }
 
 func (tm *TokenManager) ParseEmailToken(tokenString string) (string, error) {
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &ClaimsEmailToken{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrTokenInvalid
 		}
@@ -134,9 +139,12 @@ func (tm *TokenManager) ParseEmailToken(tokenString string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		logrus.Errorf("[tokens]: error parsing email token: %s", err)
+		if errors.Is(ErrTokenExpired, err) {
+			return "", ErrTokenExpired
+		}
+		return "", ErrTokenInvalid
 	}
-
 	claims, ok := token.Claims.(*ClaimsEmailToken)
 	if !ok {
 		return "", ErrTokenInvalid
@@ -144,3 +152,30 @@ func (tm *TokenManager) ParseEmailToken(tokenString string) (string, error) {
 
 	return claims.Email, nil
 }
+
+// func (tm *TokenManager) ParseMachineToken(tokenString string) (uuid.UUID, error) {
+// 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+// 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+// 			return nil, ErrTokenInvalid
+// 		}
+// 		claims, ok := t.Claims.(*ClaimsMachineToken)
+// 		if !ok {
+// 			return nil, ErrTokenInvalid
+// 		}
+// 		if claims.ExpiresAt <= time.Now().Unix() {
+// 			return nil, ErrTokenExpired
+// 		}
+// 		return []byte(tm.secretKey), nil
+// 	})
+
+// 	if err != nil {
+// 		return uuid.UUID{}, err
+// 	}
+
+// 	claims, ok := token.Claims.(*ClaimsMachineToken)
+// 	if !ok {
+// 		return uuid.UUID{}, ErrTokenInvalid
+// 	}
+
+// 	return claims.Id, nil
+// }
