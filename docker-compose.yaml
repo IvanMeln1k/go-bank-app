@@ -3,8 +3,10 @@ version: '3'
 services:
   bank:
     build: ./bank
-    ports:
-      - 8000:8000
+    # ports:
+    #   - 8000:8000
+    expose:
+      - 8000
     depends_on:
       - redisdb
       - migrate
@@ -37,6 +39,15 @@ services:
       - .env
     command: /bin/sh -c "redis-server --requirepass $$REDIS_PASSWORD"
 
+  nginx:
+    image: nginx
+    depends_on:
+      - bank
+    ports:
+      - 8000:80
+    volumes:
+      - ./nginx-conf.d:/etc/nginx/conf.d
+
   migrate:
     image: migrate/migrate
     volumes:
@@ -45,4 +56,4 @@ services:
     depends_on:
       postgresdb:
         condition: service_healthy
-  
+    
